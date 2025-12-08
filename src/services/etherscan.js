@@ -34,6 +34,8 @@ export const getTransactions = async (address) => {
         startblock: 0,
         endblock: 99999999,
         page: 1,
+        offset: 10000,
+        sort: 'desc',
 
       },
     });
@@ -92,7 +94,7 @@ export const isContract = async (address) => {
 
 // Get ETH price
 export const getEthPrice = async () => {
-    const respone = await etherscan.get('', {
+    const response = await etherscan.get('', {
         params: {
             module: 'stats',
             action: 'ethprice'
