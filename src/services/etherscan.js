@@ -25,7 +25,7 @@ export const getBalance = async (address) => {
 }
 
 // Get transaction list
-export const getTransactions = async () => {
+export const getTransactions = async (address) => {
     const response = await etherscan.get('', {
       params: {
         module: 'account',
@@ -37,6 +37,7 @@ export const getTransactions = async () => {
 
       },
     });
+    console.log('txlist response:', response.data);
     return response.data.result;
 };
 
@@ -60,7 +61,7 @@ export const getTokenTransfers = async (address) => {
 // Get NFT transfers
 export const getNFTTransfers = async (address) => {
     const response = await etherscan.get('', {
-        param: {
+        params: {
             module: 'account',
             action: 'tokennfttx',
             address,
@@ -84,13 +85,15 @@ export const isContract = async (address) => {
             tag: 'latest'
         }
     });
-    return response.data.result !== '0x';
+    console.log('eth_getCode response:', response.data);
+    const code = response.data.result;
+    return code && code !== '0x' && code.length > 2;
 }
 
 // Get ETH price
 export const getEthPrice = async () => {
     const respone = await etherscan.get('', {
-        param: {
+        params: {
             module: 'stats',
             action: 'ethprice'
         }

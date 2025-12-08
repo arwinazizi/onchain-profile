@@ -1,26 +1,29 @@
-import etherscan from "./etherscan";
+import etherscan from './etherscan';
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const fetchWalletData = async (address) => {
-    const [
-        balance,
-        transactions,
-        tokentransfers,
-        nftTransfers,
-        contractCheck
-    ] = await Promise.all([
-        etherscan.getBalance(address),
-        etherscan.getTransactions(address),
-        etherscan.getTokenTransfers(address),
-        etherscan.getNFTTransfers(address),
-        etherscan.isContract(address)
-    ]);
+  // Stagger calls to avoid rate limit
+  const balance = await etherscan.getBalance(address);
+  await delay(250);
 
-    return {
-        address,
-        balance: Number(balance) / 1e18,
-        transactions: Array.isArray(transactions) ? transactions : [],
-        tokenTransfers: Array.isArray(tokenTransfers) ? tokenTransfers : [],
-        nftTransfers: Array.isArray(nftTransfers) ? nftTransfers : [],
-        isContract: contractCheck
-    };
-}
+  const transactions = await etherscan.getTransactions(address);
+  await delay(250);
+
+  const tokenTransfers = await etherscan.getTokenTransfers(address);
+  await delay(250);
+
+  const nftTransfers = await etherscan.getNFTTransfers(address);
+  await delay(250);
+
+  const contractCheck = await etherscan.isContract(address);
+
+  return {
+    address,
+    balance: Number(balance) / 1e18,
+    transactions: Array.isArray(transactions) ? transactions : [],
+    tokenTransfers: Array.isArray(tokenTransfers) ? tokenTransfers : [],
+    nftTransfers: Array.isArray(nftTransfers) ? nftTransfers : [],
+    isContract: contractCheck,
+  };
+};
