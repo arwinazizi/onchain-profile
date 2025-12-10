@@ -1,52 +1,65 @@
 /**
  * Find top connected wallets (counterparties)
- * 
+ * Counts simple ETH transfers + ERC-20 token transfers
+ *
  * Input: walletData from fetchWalletData()
  * Output: {
- *  topSendsTo: [{ address, count }],
- *  topReceivesFrom: [{ address, count }]
+ *   topSendsTo: [{ address, count }],
+ *   topReceivesFrom: [{ address, count }]
  * }
- * 
  */
-
 export const getConnectedWallets = (walletData) => {
-    const { address, transactions } = walletData;
-    const walletLower = address.toLowerCase();
+  const { address, transactions, tokenTransfers } = walletData;
+  const walletLower = address.toLowerCase();
 
-    const sendsTo = {};
-    const receivesFrom = {};
+  const sendsTo = {};
+  const receivesFrom = {};
 
-    transactions.forEach((tx) => {
-        const from = tx.from?.toLowerCase();
-        const to = tx.to?.toLowerCase();
+  // 1. Simple ETH transfers
+  const simpleTransfers = transactions.filter((tx) => {
+    return tx.value !== '0' && tx.input === '0x' && tx.to;
+  });
 
-        // Skip if no destination (contract creation)
-        if (!to) return;
+  simpleTransfers.forEach((tx) => {
+    const from = tx.from?.toLowerCase();
+    const to = tx.to?.toLowerCase();
 
-        if (from === walletLower && to !== walletLower) {
-            // outgoing transaction
-            sendsTo[to] = (sendsTo[to] || 0) + 1;
-        } else if (to === walletLower && from !== walletLower) {
-            // Incoming transaction
-            receivesFrom[from] = (receivesFrom[from] || 0) + 1;
-        }
-    });
+    if (from === walletLower && to !== walletLower) {
+      sendsTo[to] = (sendsTo[to] || 0) + 1;
+    } else if (to === walletLower && from !== walletLower) {
+      receivesFrom[from] = (receivesFrom[from] || 0) + 1;
+    }
+  });
 
-    // Sort and get top 5
-    const topSendsTo = Object.entries(sendsTo)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([addr, count]) => [{ address: addr, count }]);
+  // 2. ERC-20 token transfers
+  tokenTransfers.forEach((tx) => {
+    const from = tx.from?.toLowerCase();
+    const to = tx.to?.toLowerCase();
 
-    const topReceivesFrom = Object.entries(receivesFrom)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([addr, count]) => ({ address: addr, count }));
+    if (!to) return;
 
-    return {
-        topSendsTo,
-        topReceivesFrom,
-    };
+    if (from === walletLower && to !== walletLower) {
+      sendsTo[to] = (sendsTo[to] || 0) + 1;
+    } else if (to === walletLower && from !== walletLower) {
+      receivesFrom[from] = (receivesFrom[from] || 0) + 1;
+    }
+  });
+
+  // Sort and get top 5
+  const topSendsTo = Object.entries(sendsTo)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([addr, count]) => ({ address: addr, count }));
+
+  const topReceivesFrom = Object.entries(receivesFrom)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([addr, count]) => ({ address: addr, count }));
+
+  return {
+    topSendsTo,
+    topReceivesFrom,
+  };
 };
 
 export default { getConnectedWallets };

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { validateAddress } from './utils/validation';
 import { fetchWalletData } from './services/wallet';
 import { classifyWallet } from './services/classifier';
+import { calculateMetrics } from './services/metrics';
+import { getConnectedWallets } from './services/connections';
 
 function App() {
   const [address, setAddress] = useState('');
@@ -24,13 +26,14 @@ function App() {
     try {
       const walletData = await fetchWalletData(validation.address);
       const classification = classifyWallet(walletData);
-
-      console.log('walletData:', walletData);
-      console.log('classification:', classification);
+      const metrics = calculateMetrics(walletData);
+      const connections = getConnectedWallets(walletData);
 
       setResult({
         ...walletData,
-        classification
+        classification,
+        metrics,
+        connections,
       });
     } catch (err) {
       setError('Failed to fetch wallet data');
@@ -39,72 +42,195 @@ function App() {
     setLoading(false);
   };
 
+  // Helper to shorten addresses
+  const shortAddr = (addr) => {
+    if (!addr) return 'Unknown';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  // Copy address to clipboard
+  const copyAddress = (addr) => {
+    navigator.clipboard.writeText(addr);
+  };
+
   return (
-    <div className='min-h-screen bg-gray-900 text-white p-8'>
-      <h1 className='text-3xl font-bold'>Onchain-Profile</h1>
-      <p className='text-gray-400 mt-2'>Paste a wallet address to analyze</p>
+    <div className='min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center'>
+      <div className='w-full max-w-2xl'>
+        <h1 className='text-3xl font-bold text-center'>Onchain-Profile</h1>
+        <p className='text-gray-400 mt-2 text-center'>
+          Paste a wallet address to analyze
+        </p>
 
-      <form onSubmit={handleSubmit} className='mt-6'>
-        <input
-          type='text'
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder='0x...'
-          className='w-full max-w-xl px-4 py-2 bg-gray-800 rounded border border-gray-700 focus:border-blue-500 outline-none'
-        />
-        <button
-          type='submit'
-          disabled={loading}
-          className='mt-4 px-6 py-2 bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50'
-        >
-          {loading ? 'Loading...' : 'Analyze'}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className='mt-6'>
+          <input
+            type='text'
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder='0x...'
+            className='w-full px-4 py-2 bg-gray-800 rounded border border-gray-700 focus:border-blue-500 outline-none'
+          />
+          <button
+            type='submit'
+            disabled={loading}
+            className='mt-4 w-full px-6 py-2 bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50'
+          >
+            {loading ? 'Loading...' : 'Analyze'}
+          </button>
+        </form>
 
-      {error && <p className='mt-4 text-red-500'>{error}</p>}
+        {error && <p className='mt-4 text-red-500 text-center'>{error}</p>}
 
-      {result && (
-        <div className='mt-6 p-4 bg-gray-800 rounded max-w-xl'>
-          <div className='flex items-center justify-between mb-4'>
-            <h2 className='text-xl font-semibold'>Wallet Profile</h2>
-            <span
-              className={`px-3 py-1 rounded text-sm font-medium ${
-                result.classification.confidence === 'high'
-                  ? 'bg-green-600'
-                  : result.classification.confidence === 'medium'
-                  ? 'bg-yellow-600'
-                  : 'bg-gray-600'
-              }`}
-            >
-              {result.classification.type}
-            </span>
+        {result && (
+          <div className='mt-6 space-y-6'>
+            {/* Header: Address + Classification */}
+            <div className='p-4 bg-gray-800 rounded'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-gray-400 text-sm'>Address</p>
+                  <p className='font-mono'>{shortAddr(result.address)}</p>
+                </div>
+                <span
+                  className={`px-3 py-1 rounded text-sm font-medium ${
+                    result.classification.type === 'Whale'
+                      ? 'bg-purple-600'
+                      : result.classification.type === 'Suspicious'
+                      ? 'bg-red-600'
+                      : result.classification.type === 'Exchange Wallet'
+                      ? 'bg-blue-600'
+                      : result.classification.type === 'Fresh Wallet'
+                      ? 'bg-green-600'
+                      : 'bg-gray-600'
+                  }`}
+                >
+                  {result.classification.type}
+                </span>
+              </div>
+            </div>
+
+            {/* Metrics Section */}
+            <div className='p-4 bg-gray-800 rounded'>
+              <h2 className='text-lg font-semibold mb-3'>Metrics</h2>
+              <div className='grid grid-cols-2 gap-4'>
+                <div>
+                  <p className='text-gray-400 text-sm'>Balance</p>
+                  <p className='text-xl font-medium'>
+                    {result.balance.toFixed(4)} ETH
+                  </p>
+                </div>
+                <div>
+                  <p className='text-gray-400 text-sm'>Wallet Age</p>
+                  <p className='text-xl font-medium'>
+                    {result.metrics.walletAgeDays} days
+                  </p>
+                </div>
+                <div>
+                  <p className='text-gray-400 text-sm'>Transactions</p>
+                  <p className='text-xl font-medium'>
+                    {result.transactions.length === 10000
+                      ? '10,000+'
+                      : result.transactions.length.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-gray-400 text-sm'>Tx / Week</p>
+                  <p className='text-xl font-medium'>
+                    {result.metrics.txPerWeek}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-gray-400 text-sm'>Unique Tokens</p>
+                  <p className='text-xl font-medium'>
+                    {result.metrics.uniqueTokens}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-gray-400 text-sm'>First Tx</p>
+                  <p className='text-xl font-medium'>
+                    {result.metrics.firstTransaction || 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Connected Wallets Section */}
+            <div className='p-4 bg-gray-800 rounded'>
+              <h2 className='text-lg font-semibold mb-3'>Connected Wallets</h2>
+              <div className='grid grid-cols-2 gap-6'>
+                {/* Sends To */}
+                <div>
+                  <p className='text-gray-400 text-sm mb-2'>Top Sends To</p>
+                  {result.connections.topSendsTo.length > 0 ? (
+                    <ul className='space-y-1'>
+                      {result.connections.topSendsTo.map((item, i) => (
+                        <li
+                          key={i}
+                          className='flex justify-between items-center font-mono text-sm'
+                        >
+                          <button
+                            onClick={() => copyAddress(item.address)}
+                            className='hover:text-blue-400 cursor-pointer'
+                            title={item.address}
+                          >
+                            {shortAddr(item.address)} 📋
+                          </button>
+                          <span className='text-gray-400'>{item.count} tx</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className='text-gray-500 text-sm'>
+                      No outgoing transfers
+                    </p>
+                  )}
+                </div>
+
+                {/* Receives From */}
+                <div>
+                  <p className='text-gray-400 text-sm mb-2'>
+                    Top Receives From
+                  </p>
+                  {result.connections.topReceivesFrom.length > 0 ? (
+                    <ul className='space-y-1'>
+                      {result.connections.topReceivesFrom.map((item, i) => (
+                        <li
+                          key={i}
+                          className='flex justify-between items-center font-mono text-sm'
+                        >
+                          <button
+                            onClick={() => copyAddress(item.address)}
+                            className='hover:text-blue-400 cursor-pointer'
+                            title={item.address}
+                          >
+                            {shortAddr(item.address)} 📋
+                          </button>
+                          <span className='text-gray-400'>{item.count} tx</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className='text-gray-500 text-sm'>
+                      No incoming transfers
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Risk Indicator */}
+            <div className='p-4 bg-gray-800 rounded'>
+              <h2 className='text-lg font-semibold mb-3'>Risk Indicators</h2>
+              <div className='flex items-center gap-2'>
+                <span className='text-gray-400'>Mixer Interaction:</span>
+                {result.classification.type === 'Suspicious' ? (
+                  <span className='text-red-500 font-medium'>⚠️ Detected</span>
+                ) : (
+                  <span className='text-green-500 font-medium'>✓ None</span>
+                )}
+              </div>
+            </div>
           </div>
-
-          <div>
-            <p>
-              <span className='text-gray-500'>Address:</span> {result.address.slice(0, 10)}...{result.address.slice(-8)}
-            </p>
-            <p>
-              <span className='text-gray-500'>Balance:</span> {result.balance.toFixed(4)} ETH
-            </p>
-            <p>
-              <span className='text-gray-500'>Transaction:</span>{' '}
-              {result.transactions.length === 10000 ? '10000+' : result.transactions.length}
-            </p>
-            <p>
-              <span className='text-gray-500'>Token Transfers:</span> {' '}
-              {result.tokenTransfers.length === 10000 ? '10000+' : result.tokenTransfers.length}
-            </p>
-            <p>
-              <span className='text-gray-500'>NFT Transfers:</span> {''}
-              {result.nftTransfers.length === 10000 ? '10000+' : result.nftTransfers.length}
-            </p>
-            <p>
-              <span className='text-gray-500'>Is Contract</span> {result.isContract ? 'Yes' : 'No'}
-            </p>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
