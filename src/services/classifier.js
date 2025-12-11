@@ -26,12 +26,7 @@ export const classifyWallet = (walletData) => {
     return { type: 'Exchange Wallet', confidence: 'high' };
   }
 
-  // 2. Fresh Wallet – very few transactions
-  if (transactions.length < 5) {
-    return { type: 'Fresh Wallet', confidence: 'high' };
-  }
-
-  // 3. Suspicious – mixer interaction detected
+  // 2. Suspicious – mixer interaction detected
   const hasMixerInteraction = transactions.some((tx) => {
     const from = tx.from?.toLowerCase();
     const to = tx.to?.toLowerCase();
@@ -42,12 +37,27 @@ export const classifyWallet = (walletData) => {
     return { type: 'Suspicious', confidence: 'high' };
   }
 
+  // 3. Bot - 500+ transactions in last 24 hours
+  const oneDayAgo = Math.floor(Date.now() / 1000) - 86400;
+  const txLast24h = transactions.filter(
+    (tx) => Number(tx.timeStamp) > oneDayAgo
+  );
+
+  if (txLast24h.length >= 500) {
+    return { type: 'Bot', confidence: 'high' };
+  }
+
   // 4. Whale – high ETH balance
   if (balance > 100) {
     return { type: 'Whale', confidence: 'high' };
   }
 
-  // 5. Unclassified – no strong pattern detected
+  // 5. Fresh Wallet – very few transactions
+  if (transactions.length < 5) {
+    return { type: 'Fresh Wallet', confidence: 'high' };
+  }
+
+  // 6. Unclassified – no strong pattern detected
   return { type: 'Unclassified', confidence: 'low' };
 };
 
