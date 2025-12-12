@@ -29,6 +29,16 @@ function App() {
       const metrics = calculateMetrics(walletData);
       const connections = getConnectedWallets(walletData);
 
+      console.log('tokenTransfers count:', walletData.tokenTransfers.length);
+      console.log(
+        'unique contracts:',
+        new Set(
+          walletData.tokenTransfers.map((tx) =>
+            tx.contractAddress?.toLowerCase()
+          )
+        ).size
+      );
+
       setResult({
         ...walletData,
         classification,

@@ -18,6 +18,8 @@ export const fetchWalletData = async (address) => {
 
   const contractCheck = await etherscan.isContract(address);
 
+  const firstTx = await etherscan.getFirstTransaction(address);
+
   return {
     address,
     balance: Number(balance) / 1e18,
@@ -25,5 +27,6 @@ export const fetchWalletData = async (address) => {
     tokenTransfers: Array.isArray(tokenTransfers) ? tokenTransfers : [],
     nftTransfers: Array.isArray(nftTransfers) ? nftTransfers : [],
     isContract: contractCheck,
+    firstTx,
   };
 };

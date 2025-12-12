@@ -1,61 +1,67 @@
-/*
-Calculate wallet metrics from transaction data
-
-Input: WalletData from fetchWalletData()
-
-Output: {
-walletAgeDays: number,
-firstTransaction: string (date),
-lastTransaction: string (date),
-txPerWeek: number,
-UniqueTokens: number
-}
-*/
-
+/**
+ * Calculate wallet metrics from transaction data
+ *
+ * Input: walletData from fetchWalletData()
+ * Output: {
+ *   walletAgeDays: number,
+ *   firstTransaction: string (date),
+ *   lastTransaction: string (date),
+ *   txPerWeek: number,
+ *   uniqueTokens: number
+ * }
+ */
 export const calculateMetrics = (walletData) => {
-    const { transactions, tokenTransfers } = walletData;
+  const { transactions, tokenTransfers, firstTx } = walletData;
 
-    // Default values if no transactions
-    if (!transactions.length) {
-        return {
-            walletAgeDays: 0,
-            firstTransaction: null,
-            lastTransaction: null,
-            txPerWeek: 0,
-            uniqueTaaokens: 0,
-        };
-    }
-
-    // Get timestamps (Etherscan returns unix seconds)
-    const timestamps = transactions.map((tx) => Number(tx.timeStamp));
-    const firstTxTime = Math.min(...timestamps);
-    const lastTxTime = Math.max(...timestamps);
-
-    // Wallet age in days
-    const now = Math.floor(Date.now() / 1000);
-    const walletAgeDays = Math.floor((now - firstTxTime) / 86400);
-
-    // Format dates
-    const firstTransaction = new Date(firstTxTime * 1000).toLocaleDateString();
-    const lastTransaction = new Date(lastTxTime * 1000).toLocaleDateString();
-
-    // Transactions per week
-    const weeks = walletAgeDays / 7 || 1;
-    const txPerWeek = Math.round((transactions.length / weeks) * 10) / 10;
-
-    // Unique tokens (from token transfers)
-    const uniqueTokens = new Set(
-      tokenTransfers.map((tx) => tx.contractAddress?.toLowerCase())
-    ).size;
-
+  // Default values if no transactions
+  if (!transactions.length && !firstTx) {
     return {
-        walletAgeDays,
-        firstTransaction,
-        lastTransaction,
-        txPerWeek,
-        uniqueTokens,
+      walletAgeDays: 0,
+      firstTransaction: null,
+      lastTransaction: null,
+      txPerWeek: 0,
+      uniqueTokens: 0,
     };
+  }
 
+  // Use firstTx from dedicated API call (accurate)
+  // Fall back to transactions array if firstTx is null
+  const firstTxTime = firstTx
+    ? Number(firstTx.timeStamp)
+    : Math.min(...transactions.map((tx) => Number(tx.timeStamp)));
+
+  // Last transaction from our transactions array (most recent)
+  const lastTxTime = transactions.length
+    ? Math.max(...transactions.map((tx) => Number(tx.timeStamp)))
+    : firstTxTime;
+
+  // Wallet age in days
+  const now = Math.floor(Date.now() / 1000);
+  const walletAgeDays = Math.floor((now - firstTxTime) / 86400);
+
+  // Format dates
+  const firstTransaction = new Date(firstTxTime * 1000).toLocaleDateString();
+  const lastTransaction = new Date(lastTxTime * 1000).toLocaleDateString();
+
+  // Transactions per week
+  const weeks = walletAgeDays / 7 || 1; // Avoid division by zero
+  const txPerWeek = Math.round((transactions.length / weeks) * 10) / 10;
+
+  // Unique tokens — count unique contract addresses, not transfers
+  const uniqueTokenAddresses = new Set(
+    tokenTransfers
+      .map((tx) => tx.contractAddress?.toLowerCase())
+      .filter(Boolean)
+  );
+  const uniqueTokens = uniqueTokenAddresses.size;
+
+  return {
+    walletAgeDays,
+    firstTransaction,
+    lastTransaction,
+    txPerWeek,
+    uniqueTokens,
+  };
 };
 
 export default { calculateMetrics };

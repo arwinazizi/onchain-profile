@@ -11,6 +11,23 @@ const etherscan = axios.create({
     }
 });
 
+// Get first ever transaction (for accurate wallet age)
+export const getFirstTransaction = async (address) => {
+    const response = await etherscan.get('', {
+      params: {
+        module: 'account',
+        action: 'txlist',
+        address,
+        startblock: 0,
+        endblock: 99999999,
+        page: 1,
+        offset: 1,
+        sort: 'asc',
+      },
+    });
+    return response.data.result[0] || null;
+}
+
 // Get ETH balance
 export const getBalance = async (address) => {
     const response = await etherscan.get('', {
@@ -104,6 +121,7 @@ export const getEthPrice = async () => {
 };
 
 export default {
+    getFirstTransaction,
     getBalance,
     getTransactions,
     getTokenTransfers,
