@@ -7,6 +7,8 @@ A wallet analysis tool that simplifies Ethereum blockchain data into behavioral 
 - React + Vite
 - Tailwind CSS
 - Etherscan API
+- Alchemy RPC
+- Helius Solana RPC
 
 ## Status
 
