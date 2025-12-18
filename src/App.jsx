@@ -5,8 +5,15 @@ import { classifyWallet } from './services/classifier';
 import { calculateMetrics } from './services/metrics';
 import { getConnectedWallets } from './services/connections';
 
+// Supported chains
+const CHAINS = {
+  ethereum: { name: 'Ethereum', symbol: 'ETH', color: 'bg-blue-600' },
+  solana: { name: 'Solana', symbol: 'SOL', color: 'bg-purple-600' },
+};
+
 function App() {
   const [address, setAddress] = useState('');
+  const [chain, setChain] = useState('ethereum');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -16,7 +23,8 @@ function App() {
     setError(null);
     setResult(null);
 
-    const validation = validateAddress(address);
+    // Validate address based on chain
+    const validation = validateAddress(address, chain);
     if (!validation.valid) {
       setError(validation.error);
       return;
@@ -24,20 +32,10 @@ function App() {
 
     setLoading(true);
     try {
-      const walletData = await fetchWalletData(validation.address);
+      const walletData = await fetchWalletData(validation.address, chain);
       const classification = classifyWallet(walletData);
       const metrics = calculateMetrics(walletData);
       const connections = getConnectedWallets(walletData);
-
-      console.log('tokenTransfers count:', walletData.tokenTransfers.length);
-      console.log(
-        'unique contracts:',
-        new Set(
-          walletData.tokenTransfers.map((tx) =>
-            tx.contractAddress?.toLowerCase()
-          )
-        ).size
-      );
 
       setResult({
         ...walletData,
@@ -46,7 +44,7 @@ function App() {
         connections,
       });
     } catch (err) {
-      setError('Failed to fetch wallet data');
+      setError('Failed to fetch wallet data. Please try again.');
       console.error(err);
     }
     setLoading(false);
@@ -63,28 +61,51 @@ function App() {
     navigator.clipboard.writeText(addr);
   };
 
+  const currentChain = CHAINS[chain];
+
   return (
     <div className='min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center'>
       <div className='w-full max-w-2xl'>
         <h1 className='text-3xl font-bold text-center'>Onchain-Profile</h1>
         <p className='text-gray-400 mt-2 text-center'>
-          Paste a wallet address to analyze
+          Analyze any wallet across multiple chains
         </p>
+
+        {/* Chain Selector */}
+        <div className='mt-6 flex justify-center gap-2'>
+          {Object.entries(CHAINS).map(([key, chainInfo]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setChain(key);
+                setResult(null);
+                setError(null);
+              }}
+              className={`px-4 py-2 rounded font-medium transition ${
+                chain === key
+                  ? `${chainInfo.color} text-white`
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {chainInfo.name}
+            </button>
+          ))}
+        </div>
 
         <form onSubmit={handleSubmit} className='mt-6'>
           <input
             type='text'
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder='0x...'
+            placeholder={chain === 'ethereum' ? '0x...' : 'Solana address...'}
             className='w-full px-4 py-2 bg-gray-800 rounded border border-gray-700 focus:border-blue-500 outline-none'
           />
           <button
             type='submit'
             disabled={loading}
-            className='mt-4 w-full px-6 py-2 bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50'
+            className={`mt-4 w-full px-6 py-2 rounded hover:opacity-90 disabled:opacity-50 ${currentChain.color}`}
           >
-            {loading ? 'Loading...' : 'Analyze'}
+            {loading ? 'Loading...' : `Analyze on ${currentChain.name}`}
           </button>
         </form>
 
@@ -92,11 +113,13 @@ function App() {
 
         {result && (
           <div className='mt-6 space-y-6'>
-            {/* Header: Address + Classification */}
+            {/* Header: Address + Classification + Chain */}
             <div className='p-4 bg-gray-800 rounded'>
               <div className='flex items-center justify-between'>
                 <div>
-                  <p className='text-gray-400 text-sm'>Address</p>
+                  <p className='text-gray-400 text-sm'>
+                    Address on {CHAINS[result.chain]?.name || 'Unknown'}
+                  </p>
                   <p className='font-mono'>{shortAddr(result.address)}</p>
                 </div>
                 <span
@@ -109,6 +132,8 @@ function App() {
                       ? 'bg-blue-600'
                       : result.classification.type === 'Fresh Wallet'
                       ? 'bg-green-600'
+                      : result.classification.type === 'Bot'
+                      ? 'bg-orange-600'
                       : 'bg-gray-600'
                   }`}
                 >
@@ -124,7 +149,7 @@ function App() {
                 <div>
                   <p className='text-gray-400 text-sm'>Balance</p>
                   <p className='text-xl font-medium'>
-                    {result.balance.toFixed(4)} ETH
+                    {result.balance.toFixed(4)} {CHAINS[result.chain]?.symbol}
                   </p>
                 </div>
                 <div>
@@ -136,8 +161,8 @@ function App() {
                 <div>
                   <p className='text-gray-400 text-sm'>Transactions</p>
                   <p className='text-xl font-medium'>
-                    {result.transactions.length === 10000
-                      ? '10,000+'
+                    {result.transactions.length >= 1000
+                      ? '1,000+'
                       : result.transactions.length.toLocaleString()}
                   </p>
                 </div>
@@ -148,7 +173,7 @@ function App() {
                   </p>
                 </div>
                 <div>
-                  <p className='text-gray-400 text-sm'>Unique Tokens</p>
+                  <p className='text-gray-400 text-sm'>Token Interactions</p>
                   <p className='text-xl font-medium'>
                     {result.metrics.uniqueTokens}
                   </p>
