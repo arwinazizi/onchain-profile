@@ -31,7 +31,7 @@ export const validateEthAddress = (address) => {
  * Validate Solana address
  * - Base58 encoded
  * - 32-44 characters
- * - No 0, O, I, l (not in Base58)
+ * - No 0, O, I, l (not in Base58 alphabet)
  */
 export const validateSolAddress = (address) => {
   if (!address) {

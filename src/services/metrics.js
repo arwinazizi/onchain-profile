@@ -11,7 +11,12 @@
  * }
  */
 export const calculateMetrics = (walletData) => {
-  const { transactions, tokenTransfers, firstTx } = walletData;
+  const {
+    transactions,
+    tokenTransfers,
+    firstTx,
+    chain = 'ethereum',
+  } = walletData;
 
   // Default values if no transactions
   if (!transactions.length && !firstTx) {
@@ -47,10 +52,16 @@ export const calculateMetrics = (walletData) => {
   const weeks = walletAgeDays / 7 || 1; // Avoid division by zero
   const txPerWeek = Math.round((transactions.length / weeks) * 10) / 10;
 
-  // Unique tokens — count unique contract addresses, not transfers
+  // Unique tokens — count unique contract addresses
+  // For Ethereum: lowercase for comparison (case-insensitive)
+  // For Solana: keep original case (case-sensitive)
   const uniqueTokenAddresses = new Set(
     tokenTransfers
-      .map((tx) => tx.contractAddress?.toLowerCase())
+      .map((tx) => {
+        const addr = tx.contractAddress;
+        if (!addr) return null;
+        return chain === 'solana' ? addr : addr.toLowerCase();
+      })
       .filter(Boolean)
   );
   const uniqueTokens = uniqueTokenAddresses.size;

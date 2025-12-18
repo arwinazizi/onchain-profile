@@ -44,8 +44,10 @@ function App() {
         connections,
       });
     } catch (err) {
-      setError('Failed to fetch wallet data. Please try again.');
-      console.error(err);
+      console.error('Error fetching wallet data:', err);
+      setError(
+        'Failed to fetch wallet data. Please check the address and try again.'
+      );
     }
     setLoading(false);
   };
@@ -56,9 +58,13 @@ function App() {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  // Copy address to clipboard
-  const copyAddress = (addr) => {
-    navigator.clipboard.writeText(addr);
+  // Copy address to clipboard with error handling
+  const copyAddress = async (addr) => {
+    try {
+      await navigator.clipboard.writeText(addr);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   const currentChain = CHAINS[chain];
@@ -105,7 +111,7 @@ function App() {
             disabled={loading}
             className={`mt-4 w-full px-6 py-2 rounded hover:opacity-90 disabled:opacity-50 ${currentChain.color}`}
           >
-            {loading ? 'Loading...' : `Analyze on ${currentChain.name}`}
+            {loading ? 'Analyzing...' : `Analyze on ${currentChain.name}`}
           </button>
         </form>
 

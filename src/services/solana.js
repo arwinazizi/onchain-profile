@@ -6,6 +6,7 @@ const RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${API_KEY}`;
 
 /**
  * Get SOL balance for an address
+ * Returns balance in lamports (1 SOL = 1,000,000,000 lamports)
  */
 export const getBalance = async (address) => {
   const response = await axios.post(RPC_URL, {
@@ -14,12 +15,12 @@ export const getBalance = async (address) => {
     method: 'getBalance',
     params: [address],
   });
-  // Returns lamports (1 SOL = 1,000,000,000 lamports)
   return response.data.result?.value || 0;
 };
 
 /**
  * Get transaction signatures (list of tx hashes)
+ * Limited to 1000 most recent (Solana RPC limit)
  */
 export const getTransactions = async (address) => {
   const response = await axios.post(RPC_URL, {
@@ -33,15 +34,14 @@ export const getTransactions = async (address) => {
 
 /**
  * Get first transaction (oldest) for wallet age
+ * Paginates backwards through history to find the very first tx
  */
 export const getFirstTransaction = async (address) => {
-  // Get signatures with 'before' param to paginate backwards
-  // This is tricky - we get the last page of results
   let signatures = [];
   let before = null;
 
   // Keep fetching until we reach the beginning
-  // Limit to 10 iterations to avoid infinite loop
+  // Limit to 10 iterations to avoid infinite loop (10,000 tx max)
   for (let i = 0; i < 10; i++) {
     const params = [address, { limit: 1000 }];
     if (before) {
@@ -65,13 +65,14 @@ export const getFirstTransaction = async (address) => {
     if (results.length < 1000) break;
   }
 
-  // Return the oldest transaction
+  // Return the oldest transaction (last in the final batch)
   return signatures.length > 0 ? signatures[signatures.length - 1] : null;
 };
 
 /**
  * Get parsed transaction history with token transfers
- * Uses Helius enhanced API
+ * Uses Helius enhanced API - provides rich data including from/to addresses
+ * Limited to 100 transactions
  */
 export const getEnhancedTransactions = async (address) => {
   try {
@@ -109,7 +110,7 @@ export const getTokenBalances = async (address) => {
 };
 
 /**
- * Check if address is a program (equivalent to contract)
+ * Check if address is a program (equivalent to smart contract)
  */
 export const isProgram = async (address) => {
   try {

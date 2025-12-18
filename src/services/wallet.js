@@ -21,8 +21,8 @@ export const fetchEthWalletData = async (address) => {
   const nftTransfers = await etherscan.getNFTTransfers(address);
   await delay(250);
 
-  const contractCheck = await etherscan.isContract(address);
-  await delay(250);
+  // NOTE: Removed isContract check - we weren't using it for classification
+  // If needed later, add it back
 
   const firstTx = await etherscan.getFirstTransaction(address);
 
@@ -33,7 +33,6 @@ export const fetchEthWalletData = async (address) => {
     transactions: Array.isArray(transactions) ? transactions : [],
     tokenTransfers: Array.isArray(tokenTransfers) ? tokenTransfers : [],
     nftTransfers: Array.isArray(nftTransfers) ? nftTransfers : [],
-    isContract: contractCheck,
     firstTx,
   };
 };
@@ -60,28 +59,24 @@ export const fetchSolWalletData = async (address) => {
 
   // Get token balances
   const tokenAccounts = await solana.getTokenBalances(address);
-  await delay(200);
 
-  // Check if program
-  const isProgram = await solana.isProgram(address);
-
-  // Transform to match Ethereum data structure
-  // Convert signatures to transaction-like objects
+  // Transform signatures to transaction-like objects
+  // NOTE: Solana txs don't have simple from/to like Ethereum
+  // We use timestamps for metrics and enhanced txs for connections
   const transactions = signatures.map((sig) => ({
     hash: sig.signature,
     timeStamp: sig.blockTime?.toString() || '0',
-    from: '', // Solana txs don't have simple from/to
-    to: '',
-    value: '0',
+    // No from/to for Solana basic transactions
   }));
 
   // Extract token transfers from enhanced transactions
+  // These DO have from/to which we use for connections
   const tokenTransfers = [];
   enhancedTxs.forEach((tx) => {
     if (tx.tokenTransfers) {
       tx.tokenTransfers.forEach((transfer) => {
         tokenTransfers.push({
-          contractAddress: transfer.mint,
+          contractAddress: transfer.mint, // Token mint address (like ERC-20 contract)
           from: transfer.fromUserAccount || '',
           to: transfer.toUserAccount || '',
           value: transfer.tokenAmount?.toString() || '0',
@@ -103,9 +98,7 @@ export const fetchSolWalletData = async (address) => {
     transactions,
     tokenTransfers,
     nftTransfers: [], // Could add NFT parsing later
-    isContract: isProgram,
     firstTx: formattedFirstTx,
-    // Solana-specific data
     tokenAccounts: tokenAccounts.length,
   };
 };
