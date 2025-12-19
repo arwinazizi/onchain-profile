@@ -2,7 +2,7 @@
  * Find top connected wallets (counterparties)
  *
  * For Ethereum: Uses transactions (from/to) and tokenTransfers
- * For Solana: Uses tokenTransfers only (transactions don't have from/to)
+ * For Solana: Uses tokenTransfers AND nativeTransfers (SOL movements)
  *
  * Input: walletData from fetchWalletData()
  * Output: {
@@ -15,6 +15,7 @@ export const getConnectedWallets = (walletData) => {
     address,
     transactions,
     tokenTransfers,
+    nativeTransfers = [], // <-- ADD THIS (default to empty array)
     chain = 'ethereum',
   } = walletData;
 
@@ -30,7 +31,7 @@ export const getConnectedWallets = (walletData) => {
   const walletAddr = normalizeAddr(address);
 
   if (chain === 'ethereum') {
-    // --- ETHEREUM LOGIC ---
+    // --- ETHEREUM LOGIC (unchanged) ---
 
     // 1. Simple ETH transfers (value > 0, no contract call)
     const simpleTransfers = transactions.filter((tx) => {
@@ -62,11 +63,12 @@ export const getConnectedWallets = (walletData) => {
       }
     });
   } else if (chain === 'solana') {
-    // --- SOLANA LOGIC ---
-    // Solana transactions don't have simple from/to like Ethereum
-    // We rely on tokenTransfers from Helius enhanced API
+    // --- SOLANA LOGIC (updated) ---
 
-    tokenTransfers.forEach((tx) => {
+    // Combine token transfers AND native SOL transfers
+    const allTransfers = [...tokenTransfers, ...nativeTransfers];
+
+    allTransfers.forEach((tx) => {
       const from = normalizeAddr(tx.from);
       const to = normalizeAddr(tx.to);
 

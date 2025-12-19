@@ -73,13 +73,29 @@ export const fetchSolWalletData = async (address) => {
   // These DO have from/to which we use for connections
   const tokenTransfers = [];
   enhancedTxs.forEach((tx) => {
-    if (tx.tokenTransfers) {
+    if (tx.type === 'TRANSFER' && tx.tokenTransfers) {
       tx.tokenTransfers.forEach((transfer) => {
         tokenTransfers.push({
           contractAddress: transfer.mint, // Token mint address (like ERC-20 contract)
           from: transfer.fromUserAccount || '',
           to: transfer.toUserAccount || '',
           value: transfer.tokenAmount?.toString() || '0',
+          timeStamp: tx.timestamp?.toString() || '0',
+        });
+      });
+    }
+  });
+
+
+  // Extract native SOL transfers (only direct transfers)
+  const nativeTransfers = [];
+  enhancedTxs.forEach((tx) => {
+    if (tx.type === 'TRANSFER' && tx.nativeTransfers) {
+      tx.nativeTransfers.forEach((transfer) => {
+        nativeTransfers.push({
+          from: transfer.fromUserAccount || '',
+          to: transfer.toUserAccount || '',
+          amount: transfer.amount,
           timeStamp: tx.timestamp?.toString() || '0',
         });
       });
@@ -97,6 +113,7 @@ export const fetchSolWalletData = async (address) => {
     balance: balanceLamports / 1e9, // Convert lamports to SOL
     transactions,
     tokenTransfers,
+    nativeTransfers,
     nftTransfers: [], // Could add NFT parsing later
     firstTx: formattedFirstTx,
     tokenAccounts: tokenAccounts.length,
