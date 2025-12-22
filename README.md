@@ -4,7 +4,7 @@ A multi-chain wallet analysis tool that simplifies Ethereum & Solana blockchain 
 
 # About
 
-Tahis project was built as a degree project for the Blockchain Development program at Medieinstitutet (BCU24D). It analyzes wallet addresses and classifies them into different behavioral types to help users understand wallet activity patterns
+This project was built as a degree project for the Blockchain Development program at Medieinstitutet (BCU24D). It analyzes wallet addresses and classifies them into different behavioral types to help users understand wallet activity patterns
 
 # Features
 
@@ -22,7 +22,7 @@ Transaction metrics - Displays key wallet statistics
 
 Type and descriptions
 
-Whale - High-value wallet holding significant assets (>$100kor>100ETH/100000SOL)
+Whale - High-value wallet holding significant assets (>$100kor>100ETH/1000SOL)
 
 Bot - Automated wallet with high transaction frequency(>500 tx last 24hours)
 
@@ -32,7 +32,7 @@ Suspicious - Wallet interacting with known mixers or flagged addresses
 
 Fresh - New wallet with minimal transaction history (<5 transactions)
 
-Unclassified - Regular wallet not matching anby of the types.
+Unclassified - Regular wallet not matching any of the types.
 
 
 ## Tech Stack
@@ -40,7 +40,6 @@ Unclassified - Regular wallet not matching anby of the types.
 - React + Vite
 - Tailwind CSS
 - Etherscan API
-- Alchemy RPC (not being used currently)
 - Helius Solana RPC
 
 # Getting Started
@@ -56,14 +55,14 @@ API keys for Etherscan and Helius
 // clone the repo 
 git clone https://github.com/yourusername/onchain-profile.git
 
-// Navigate to porject folder
+// Navigate to project folder
 cd onchain-profile
 
 // Install dependencies
 npm install
 
 // Create .env file with your API keys
-cp.env.example .env
+cp env.example .env
 
 // Running the app
 npm run dev
@@ -97,11 +96,13 @@ API rate limits may affect analysis of very active wallets
 
 Classification thresholds are simplified for demonstration purposes
 
+
+
 # Future Improvements
 
 Paid API for more data, for example get all the wallets history instead of latest 10 000 transactions and get to use the "exchange" tag API to immediately get to see if a wallet is tagged as an exchange wallet instead of manually hardcoding known exchange wallets.
 
-Add more wallet classification ntypes (Hodler, NFT collector, Active Trader, Degen)
+Add more wallet classification types (Hodler, NFT collector, Active Trader, Degen)
 
 Support more chains(Base, Tron, Sui, Bsc etc...)
 
@@ -109,4 +110,39 @@ Support more chains(Base, Tron, Sui, Bsc etc...)
 # Status
 
 Polish/testing/deployment
+
+# Project Structure
+
+src/
+├── App.jsx                     # Main app orchestrator
+├── main.jsx                    # Entry point
+├── index.css                   # Tailwind import
+├── components/
+│   ├── index.js                # Barrel export
+│   ├── ClassificationBadge.jsx # Wallet type badge
+│   ├── ChainSelector.jsx       # ETH/SOL toggle
+│   ├── WalletHeader.jsx        # Address display
+│   ├── WalletMetrics.jsx       # Stats grid
+│   ├── ConnectedWallets.jsx    # Top counterparties
+│   └── RiskIndicators.jsx      # Mixer detection
+├── services/
+│   ├── wallet.js               # Data fetching orchestrator
+│   ├── etherscan.js            # Ethereum API calls
+│   ├── solana.js               # Solana/Helius API calls
+│   ├── classifier.js           # Wallet classification logic
+│   ├── connections.js          # Connected wallets analysis
+│   └── metrics.js              # Wallet metrics calculation
+├── data/
+│   ├── exchanges.json          # Known ETH exchange addresses
+│   ├── mixers.json             # Known ETH mixer addresses
+│   ├── solana-exchanges.json   # Known SOL exchange addresses
+│   └── solana-mixers.json      # SOL mixers (empty - limitation)
+└── utils/
+    └── validation.js           # Address validation
+
+
+
+# License 
+
+MIT
 

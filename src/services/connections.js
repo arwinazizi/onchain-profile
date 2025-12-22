@@ -10,12 +10,17 @@
  *   topReceivesFrom: [{ address, count }]
  * }
  */
+
+// Minimum threshold to filter dust spam (in lamports)
+// 1,000,000 lamports = 0.001 SOL
+const DUST_THRESHOLD_LAMPORTS = 1000000;
+
 export const getConnectedWallets = (walletData) => {
   const {
     address,
     transactions,
     tokenTransfers,
-    nativeTransfers = [], // <-- ADD THIS (default to empty array)
+    nativeTransfers = [],
     chain = 'ethereum',
   } = walletData;
 
@@ -63,10 +68,15 @@ export const getConnectedWallets = (walletData) => {
       }
     });
   } else if (chain === 'solana') {
-    // --- SOLANA LOGIC (updated) ---
+    // --- SOLANA LOGIC (with dust filter) ---
 
-    // Combine token transfers AND native SOL transfers
-    const allTransfers = [...tokenTransfers, ...nativeTransfers];
+    // Filter native transfers to exclude dust
+    const filteredNativeTransfers = nativeTransfers.filter(
+      (tx) => tx.amount >= DUST_THRESHOLD_LAMPORTS
+    );
+
+    // Combine token transfers AND filtered native SOL transfers
+    const allTransfers = [...tokenTransfers, ...filteredNativeTransfers];
 
     allTransfers.forEach((tx) => {
       const from = normalizeAddr(tx.from);
