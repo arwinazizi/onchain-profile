@@ -33,44 +33,55 @@ function App() {
 
   // Load wallet from URL on mount or URL change
   useEffect(() => {
-    if (urlChain && urlAddress && CHAINS[urlChain]) {
-      setChain(urlChain);
-      setAddress(urlAddress);
-      analyzeWallet(urlAddress, urlChain);
-    }
+    const loadWallet = async () => {
+      if (urlChain && urlAddress && CHAINS[urlChain]) {
+        setChain(urlChain);
+        setAddress(urlAddress);
+
+        // Analyze the wallet
+        setError(null);
+        setResult(null);
+        setLoading(true);
+
+        const validation = validateAddress(urlAddress, urlChain);
+        if (!validation.valid) {
+          setError(validation.error);
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const walletData = await fetchWalletData(
+            validation.address,
+            urlChain
+          );
+          const classification = classifyWallet(walletData);
+          const metrics = calculateMetrics(walletData);
+          const connections = getConnectedWallets(walletData);
+
+          setResult({
+            ...walletData,
+            classification,
+            metrics,
+            connections,
+          });
+        } catch (err) {
+          console.error('Error fetching wallet data:', err);
+          setError(
+            'Failed to fetch wallet data. Please check the address and try again.'
+          );
+        }
+        setLoading(false);
+      } else if (!urlChain && !urlAddress) {
+        // Back to home - clear results
+        setResult(null);
+        setError(null);
+        setAddress('');
+      }
+    };
+
+    loadWallet();
   }, [urlChain, urlAddress]);
-
-  const analyzeWallet = async (walletAddress, walletChain) => {
-    setError(null);
-    setResult(null);
-
-    const validation = validateAddress(walletAddress, walletChain);
-    if (!validation.valid) {
-      setError(validation.error);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const walletData = await fetchWalletData(validation.address, walletChain);
-      const classification = classifyWallet(walletData);
-      const metrics = calculateMetrics(walletData);
-      const connections = getConnectedWallets(walletData);
-
-      setResult({
-        ...walletData,
-        classification,
-        metrics,
-        connections,
-      });
-    } catch (err) {
-      console.error('Error fetching wallet data:', err);
-      setError(
-        'Failed to fetch wallet data. Please check the address and try again.'
-      );
-    }
-    setLoading(false);
-  };
 
   const handleChainSelect = (newChain) => {
     setChain(newChain);
