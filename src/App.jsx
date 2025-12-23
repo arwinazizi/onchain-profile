@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { validateAddress } from './utils/validation';
 import { fetchWalletData } from './services/wallet';
 import { classifyWallet } from './services/classifier';
@@ -21,24 +22,29 @@ const CHAINS = {
 };
 
 function App() {
+  const { chain: urlChain, address: urlAddress } = useParams();
+  const navigate = useNavigate();
+
   const [address, setAddress] = useState('');
   const [chain, setChain] = useState('ethereum');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-  const handleChainSelect = (newChain) => {
-    setChain(newChain);
-    setResult(null);
-    setError(null);
-  };
+  // Load wallet from URL on mount or URL change
+  useEffect(() => {
+    if (urlChain && urlAddress && CHAINS[urlChain]) {
+      setChain(urlChain);
+      setAddress(urlAddress);
+      analyzeWallet(urlAddress, urlChain);
+    }
+  }, [urlChain, urlAddress]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const analyzeWallet = async (walletAddress, walletChain) => {
     setError(null);
     setResult(null);
 
-    const validation = validateAddress(address, chain);
+    const validation = validateAddress(walletAddress, walletChain);
     if (!validation.valid) {
       setError(validation.error);
       return;
@@ -46,7 +52,7 @@ function App() {
 
     setLoading(true);
     try {
-      const walletData = await fetchWalletData(validation.address, chain);
+      const walletData = await fetchWalletData(validation.address, walletChain);
       const classification = classifyWallet(walletData);
       const metrics = calculateMetrics(walletData);
       const connections = getConnectedWallets(walletData);
@@ -66,12 +72,38 @@ function App() {
     setLoading(false);
   };
 
+  const handleChainSelect = (newChain) => {
+    setChain(newChain);
+    setResult(null);
+    setError(null);
+    // Go back to home when switching chains
+    navigate('/');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const validation = validateAddress(address, chain);
+    if (!validation.valid) {
+      setError(validation.error);
+      return;
+    }
+
+    // Update URL - this triggers the useEffect which calls analyzeWallet
+    navigate(`/${chain}/${validation.address}`);
+  };
+
   const currentChain = CHAINS[chain];
 
   return (
     <div className='min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center'>
       <div className='w-full max-w-2xl'>
-        <h1 className='text-3xl font-bold text-center'>Onchain-Profile</h1>
+        <h1
+          className='text-3xl font-bold text-center cursor-pointer hover:text-gray-300'
+          onClick={() => navigate('/')}
+        >
+          Onchain-Profile
+        </h1>
         <p className='text-gray-400 mt-2 text-center'>
           Analyze any wallet across multiple chains
         </p>
