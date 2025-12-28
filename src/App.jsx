@@ -167,6 +167,10 @@ function App() {
           </div>
         )}
       </div>
+      <p className='text-gray-500 text-sm mt-8 text-center'>
+        Classifications are estimates based on on-chain data and may not be
+        accurate.
+      </p>
     </div>
   );
 }
